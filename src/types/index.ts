@@ -9,6 +9,17 @@ export type CardThemeId =
 
 export type Language = 'en' | 'ar';
 
+export interface PromoCoupon {
+  id: string;
+  merchantId: string;
+  headline: string; // e.g. "Your 1st Signature Coffee on Us"
+  subheadline: string; // "Claim your free cup and unlock your member card"
+  voucherCode: string; // e.g. "WELCOME-FREE"
+  discountType: 'free_item' | 'percent_off' | 'first_stamp';
+  isClaimed: boolean;
+  claimedAt?: string;
+}
+
 export interface MerchantConfig {
   id: string;
   name: string;
@@ -22,6 +33,7 @@ export interface MerchantConfig {
   rewardTerms: string;
   birthdayReward: string; // e.g. "Free Birthday Beverage"
   welcomeStampBonus: boolean; // Give 1st stamp free upon registration
+  activeCoupon?: PromoCoupon;
   theme: CardThemeId;
   stampIcon: StampIconType;
   cashierPin: string; // 4 digits
@@ -39,6 +51,7 @@ export interface CustomerLoyaltyCard {
   currentStamps: number;
   totalCompletedCards: number;
   unredeemedRewards: number;
+  claimedCouponId?: string;
   stampsHistory: {
     stampIndex: number;
     timestamp: string;
@@ -53,10 +66,10 @@ export interface StampActivityLog {
   id: string;
   cardId: string;
   customerPhone: string;
-  type: 'stamp_added' | 'reward_unlocked' | 'reward_redeemed' | 'birthday_claimed';
+  type: 'stamp_added' | 'reward_unlocked' | 'reward_redeemed' | 'birthday_claimed' | 'coupon_claimed';
   stampsCount: number;
   timestamp: string;
   cashierName: string;
 }
 
-export type ViewMode = 'customer' | 'cashier' | 'admin' | 'counter-stand' | 'simulator';
+export type ViewMode = 'customer' | 'cashier' | 'admin' | 'counter-stand' | 'simulator' | 'coupon';

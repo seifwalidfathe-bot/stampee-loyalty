@@ -8,7 +8,8 @@ import { MerchantAdmin } from './components/MerchantAdmin';
 import { CounterStand } from './components/CounterStand';
 import { SimulatorModal } from './components/SimulatorModal';
 import { JoinModal } from './components/JoinModal';
-import { Sparkles, UserPlus } from 'lucide-react';
+import { CouponLanding } from './components/CouponLanding';
+import { Sparkles, UserPlus, Ticket } from 'lucide-react';
 import { getT } from './lib/translations';
 
 export function App() {
@@ -19,6 +20,16 @@ export function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('customer');
   const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState<boolean>(false);
+
+  // Check URL params for ?coupon= or ?merchant=
+  useEffect(() => {
+    if (typeof window === 'object' && window) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('coupon')) {
+        setViewMode('coupon');
+      }
+    }
+  }, []);
 
   // Sync state with storage updates
   useEffect(() => {
@@ -67,6 +78,11 @@ export function App() {
     setActiveCardId(newCard.id);
   };
 
+  const handleCouponTransformed = (transformedCard: CustomerLoyaltyCard) => {
+    handleUpdateCard(transformedCard);
+    setViewMode('customer');
+  };
+
   const activeCard = cards.find(c => c.id === activeCardId) || cards[0];
   const isAr = lang === 'ar';
   const t = getT(lang);
@@ -102,11 +118,11 @@ export function App() {
             </button>
 
             <button
-              onClick={() => setIsSimulatorOpen(true)}
+              onClick={() => setViewMode('coupon')}
               className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition-colors"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t.dualSimulator}</span>
+              <Ticket className="w-3.5 h-3.5" />
+              <span>{isAr ? 'كوبون القهوة' : 'Free Coupon'}</span>
             </button>
           </div>
         )}
@@ -121,6 +137,18 @@ export function App() {
             onUpdateCard={handleUpdateCard}
             onOpenCashier={() => setViewMode('cashier')}
             onOpenJoinModal={() => setIsJoinModalOpen(true)}
+            onOpenCoupon={() => setViewMode('coupon')}
+          />
+        )}
+
+        {/* View 1B: TAPPI Hook - 1st Coffee Free Coupon Landing */}
+        {viewMode === 'coupon' && activeCard && (
+          <CouponLanding
+            merchant={merchant}
+            card={activeCard}
+            lang={lang}
+            onCouponTransformed={handleCouponTransformed}
+            onOpenCard={() => setViewMode('customer')}
           />
         )}
 
@@ -144,6 +172,7 @@ export function App() {
           <MerchantAdmin
             merchant={merchant}
             cards={cards}
+            lang={lang}
             onSaveMerchant={handleSaveMerchant}
             onOpenCounterStand={() => setViewMode('counter-stand')}
             onSelectCustomerCard={(cardId) => {
@@ -158,6 +187,7 @@ export function App() {
         {viewMode === 'counter-stand' && (
           <CounterStand
             merchant={merchant}
+            lang={lang}
             onBack={() => setViewMode('admin')}
           />
         )}
@@ -202,9 +232,9 @@ export function App() {
           <div className="flex items-center gap-4 text-zinc-400">
             <span>Client Web PWA</span>
             <span>•</span>
-            <span>POS Cashier Terminal</span>
+            <span>NFC Counter Puck</span>
             <span>•</span>
-            <span>Printable Counter Kit</span>
+            <span>POS Cashier Terminal</span>
           </div>
         </div>
       </footer>

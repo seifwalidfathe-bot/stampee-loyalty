@@ -12,12 +12,15 @@ import {
   History,
   Cake,
   Globe,
-  UserPlus
+  UserPlus,
+  Radio,
+  Ticket
 } from 'lucide-react';
 import { CustomerLoyaltyCard, MerchantConfig, Language } from '../types';
 import { StampIcon } from './StampIcon';
 import { SecretPinModal } from './SecretPinModal';
 import { AppleGoogleWalletModal } from './AppleGoogleWalletModal';
+import { NfcTapSimulatorModal } from './NfcTapSimulatorModal';
 import { soundEngine } from '../lib/sound';
 import { getT } from '../lib/translations';
 
@@ -29,6 +32,7 @@ interface CustomerCardProps {
   onUpdateCard: (updated: CustomerLoyaltyCard) => void;
   onOpenCashier?: () => void;
   onOpenJoinModal?: () => void;
+  onOpenCoupon?: () => void;
 }
 
 export const CustomerCard: React.FC<CustomerCardProps> = ({
@@ -39,9 +43,11 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
   onUpdateCard,
   onOpenCashier,
   onOpenJoinModal,
+  onOpenCoupon,
 }) => {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isNfcModalOpen, setIsNfcModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [justStampedIndex, setJustStampedIndex] = useState<number | null>(null);
@@ -454,6 +460,15 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
           <span>{t.addToWallet}</span>
         </button>
 
+        {/* NFC Counter Tap Simulation Button (StampForYou style) */}
+        <button
+          onClick={() => setIsNfcModalOpen(true)}
+          className="w-full h-11 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-98 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2"
+        >
+          <Radio className="w-4 h-4 text-emerald-400" />
+          <span>{isAr ? 'تجربة لمس قرص الـ NFC بالكاونتر' : 'Simulate Counter NFC Tap'}</span>
+        </button>
+
         {/* Staff Quick Stamp Button */}
         <button
           onClick={() => setIsPinModalOpen(true)}
@@ -475,6 +490,16 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
             <span>{t.openCashierTerminal}</span>
           </button>
           
+          {onOpenCoupon && (
+            <button
+              onClick={onOpenCoupon}
+              className="hover:text-amber-300 text-amber-400/90 font-medium transition-colors flex items-center gap-1"
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              <span>{isAr ? 'كوبون القهوة الأولى' : '1st Coffee Coupon'}</span>
+            </button>
+          )}
+
           {onOpenJoinModal && (
             <button
               onClick={onOpenJoinModal}
@@ -538,6 +563,16 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         card={card}
         merchant={merchant}
         lang={lang}
+      />
+
+      {/* NFC Counter Tap Simulator Modal (StampForYou style) */}
+      <NfcTapSimulatorModal
+        isOpen={isNfcModalOpen}
+        onClose={() => setIsNfcModalOpen(false)}
+        card={card}
+        merchant={merchant}
+        lang={lang}
+        onStampAdded={() => handlePinStampSuccess(1)}
       />
     </div>
   );
