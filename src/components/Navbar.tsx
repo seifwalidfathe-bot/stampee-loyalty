@@ -6,7 +6,8 @@ import {
   Sparkles,
   Smartphone,
   Globe,
-  Ticket
+  Ticket,
+  BellRing
 } from 'lucide-react';
 import { ViewMode, MerchantConfig, Language } from '../types';
 
@@ -78,6 +79,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Ticket className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{isAr ? 'كوبون القهوة' : 'Free Coupon'}</span>
+            </button>
+          )}
+
+          {merchant.features?.enableDigitalPager && (
+            <button
+              onClick={() => onSelectMode('pager')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                currentMode === 'pager'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-orange-400 hover:text-orange-300 hover:bg-white/5'
+              }`}
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAr ? 'البيجر ولعبة الكوب' : 'Pager & Game'}</span>
             </button>
           )}
 

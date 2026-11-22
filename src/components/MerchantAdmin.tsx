@@ -24,7 +24,8 @@ import {
   ShieldCheck,
   Volume2,
   Cake,
-  Gift
+  Gift,
+  BellRing
 } from 'lucide-react';
 import { MerchantConfig, CustomerLoyaltyCard, CardThemeId, StampIconType, Language, FeatureFlags } from '../types';
 import { StampIcon } from './StampIcon';
@@ -463,7 +464,7 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
             </div>
 
             {/* Feature 7: Web Audio Sound & Haptics */}
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3 md:col-span-2">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   <Volume2 className="w-4 h-4" />
@@ -486,6 +487,36 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
               >
                 <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
                   formData.features.enableSoundEffects ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 8: Tannah Digital Pager & Waiting Game */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                  <BellRing className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'بيجر الطلبات الرقمي ولعبة الانتظار (Tannah Pager)' : 'Digital Pager & Waiting Game'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr 
+                      ? 'استبدال أجهزة البيجر البلاستيكية برنين واهتزاز على هاتف العميل مع لعبة تسلية أثناء الانتظار.' 
+                      : 'Replaces expensive hardware pagers with mobile web buzzers and waiting mini-games.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableDigitalPager')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableDigitalPager ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableDigitalPager ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
                 }`} />
               </button>
             </div>

@@ -9,6 +9,7 @@ import { CounterStand } from './components/CounterStand';
 import { SimulatorModal } from './components/SimulatorModal';
 import { JoinModal } from './components/JoinModal';
 import { CouponLanding } from './components/CouponLanding';
+import { DigitalPagerModal } from './components/DigitalPagerModal';
 import { Sparkles, UserPlus, Ticket } from 'lucide-react';
 import { getT } from './lib/translations';
 
@@ -149,6 +150,37 @@ export function App() {
             lang={lang}
             onCouponTransformed={handleCouponTransformed}
             onOpenCard={() => setViewMode('customer')}
+          />
+        )}
+
+        {/* View 1C: Tannah Digital Pager & Waiting Mini-Game View */}
+        {viewMode === 'pager' && activeCard && (
+          <DigitalPagerModal
+            isOpen={true}
+            onClose={() => setViewMode('customer')}
+            order={storage.getActiveOrders().find(o => o.status === 'preparing' || o.status === 'ready') || {
+              id: 'ord-demo-47',
+              orderNumber: '47',
+              customerPhone: activeCard.customerPhone,
+              cardId: activeCard.id,
+              status: 'preparing',
+              createdAt: new Date().toISOString(),
+            }}
+            merchant={merchant}
+            card={activeCard}
+            lang={lang}
+            onOrderClaimed={(orderId) => {
+              storage.updateOrderStatus(orderId, 'picked_up');
+              handleUpdateCard({
+                ...activeCard,
+                currentStamps: Math.min(merchant.totalStamps, activeCard.currentStamps + 1),
+                lastVisited: new Date().toISOString(),
+              });
+              setViewMode('customer');
+            }}
+            onSimulateReady={(orderId) => {
+              storage.updateOrderStatus(orderId, 'ready');
+            }}
           />
         )}
 

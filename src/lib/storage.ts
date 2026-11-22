@@ -1,4 +1,4 @@
-import { MerchantConfig, CustomerLoyaltyCard, StampActivityLog, Language, FeatureFlags } from '../types';
+import { MerchantConfig, CustomerLoyaltyCard, StampActivityLog, Language, FeatureFlags, ActiveOrder } from '../types';
 
 export const DEFAULT_FEATURES: FeatureFlags = {
   enableWelcomeBonus: true,
@@ -8,6 +8,7 @@ export const DEFAULT_FEATURES: FeatureFlags = {
   enableMobileWallet: true,
   enableSecretStaffPin: true,
   enableSoundEffects: true,
+  enableDigitalPager: true,
 };
 
 export const DEFAULT_MERCHANT: MerchantConfig = {
@@ -82,12 +83,33 @@ export const INITIAL_LOGS: StampActivityLog[] = [
   }
 ];
 
+export const INITIAL_ACTIVE_ORDERS: ActiveOrder[] = [
+  {
+    id: 'ord-47',
+    orderNumber: '47',
+    customerPhone: '+20 100 234 5678',
+    cardId: 'card-demo-1',
+    status: 'preparing',
+    createdAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+  },
+  {
+    id: 'ord-48',
+    orderNumber: '48',
+    customerPhone: '+20 111 876 5432',
+    cardId: 'card-demo-2',
+    status: 'ready',
+    createdAt: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
+    readyAt: new Date(Date.now() - 1000 * 60 * 1).toISOString(),
+  }
+];
+
 const KEYS = {
   MERCHANT: 'stampee_merchant_v3',
   CARDS: 'stampee_cards_v3',
   LOGS: 'stampee_logs_v3',
   ACTIVE_CARD_ID: 'stampee_active_card_v3',
   LANG: 'stampee_lang_v3',
+  ACTIVE_ORDERS: 'stampee_active_orders_v3',
 };
 
 export const storage = {
@@ -183,6 +205,55 @@ export const storage = {
     window.dispatchEvent(new Event('stampee_storage_update'));
   },
 
+  getActiveOrders(): ActiveOrder[] {
+    if (typeof window === 'undefined') return INITIAL_ACTIVE_ORDERS;
+    const raw = localStorage.getItem(KEYS.ACTIVE_ORDERS);
+    if (raw === null || raw === '') {
+      localStorage.setItem(KEYS.ACTIVE_ORDERS, JSON.stringify(INITIAL_ACTIVE_ORDERS));
+      return INITIAL_ACTIVE_ORDERS;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return INITIAL_ACTIVE_ORDERS;
+    }
+  },
+
+  saveActiveOrders(orders: ActiveOrder[]) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(KEYS.ACTIVE_ORDERS, JSON.stringify(orders));
+    window.dispatchEvent(new Event('stampee_storage_update'));
+  },
+
+  createOrder(orderNumber: string, customerPhone?: string, cardId?: string): ActiveOrder {
+    const orders = this.getActiveOrders();
+    const newOrder: ActiveOrder = {
+      id: 'ord-' + Math.random().toString(36).substring(2, 9),
+      orderNumber,
+      customerPhone,
+      cardId,
+      status: 'preparing',
+      createdAt: new Date().toISOString(),
+    };
+    this.saveActiveOrders([newOrder, ...orders]);
+    return newOrder;
+  },
+
+  updateOrderStatus(orderId: string, status: ActiveOrder['status']) {
+    const orders = this.getActiveOrders();
+    const updated = orders.map(ord => {
+      if (ord.id === orderId) {
+        return {
+          ...ord,
+          status,
+          readyAt: status === 'ready' ? new Date().toISOString() : ord.readyAt,
+        };
+      }
+      return ord;
+    });
+    this.saveActiveOrders(updated);
+  },
+
   // Reset everything to 0 for a real fresh business launch
   resetToCleanSlate(
     businessName: string, 
@@ -237,6 +308,7 @@ export const storage = {
     this.saveCards([firstCard]);
     this.setActiveCardId(firstCard.id);
     localStorage.setItem(KEYS.LOGS, JSON.stringify([]));
+    localStorage.setItem(KEYS.ACTIVE_ORDERS, JSON.stringify([]));
 
     return freshMerchant;
   },

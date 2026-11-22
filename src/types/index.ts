@@ -17,6 +17,17 @@ export interface FeatureFlags {
   enableMobileWallet: boolean;      // Apple Wallet & Google Wallet pass modal
   enableSecretStaffPin: boolean;    // Direct cashier 4-digit PIN stamping on phone
   enableSoundEffects: boolean;      // Web Audio API rubber-stamp thump & chime
+  enableDigitalPager: boolean;      // Tannah digital buzzer & waiting mini-game
+}
+
+export interface ActiveOrder {
+  id: string;
+  orderNumber: string; // e.g. "47"
+  customerPhone?: string;
+  cardId?: string;
+  status: 'preparing' | 'ready' | 'picked_up';
+  createdAt: string;
+  readyAt?: string;
 }
 
 export interface PromoCoupon {
@@ -83,4 +94,4 @@ export interface StampActivityLog {
   cashierName: string;
 }
 
-export type ViewMode = 'customer' | 'cashier' | 'admin' | 'counter-stand' | 'simulator' | 'coupon';
+export type ViewMode = 'customer' | 'cashier' | 'admin' | 'counter-stand' | 'simulator' | 'coupon' | 'pager';

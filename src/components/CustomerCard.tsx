@@ -14,14 +14,17 @@ import {
   Globe,
   UserPlus,
   Radio,
-  Ticket
+  Ticket,
+  BellRing
 } from 'lucide-react';
-import { CustomerLoyaltyCard, MerchantConfig, Language } from '../types';
+import { CustomerLoyaltyCard, MerchantConfig, Language, ActiveOrder } from '../types';
 import { StampIcon } from './StampIcon';
 import { SecretPinModal } from './SecretPinModal';
 import { AppleGoogleWalletModal } from './AppleGoogleWalletModal';
 import { NfcTapSimulatorModal } from './NfcTapSimulatorModal';
+import { DigitalPagerModal } from './DigitalPagerModal';
 import { soundEngine } from '../lib/sound';
+import { storage } from '../lib/storage';
 import { getT } from '../lib/translations';
 
 interface CustomerCardProps {
@@ -48,6 +51,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNfcModalOpen, setIsNfcModalOpen] = useState(false);
+  const [isPagerModalOpen, setIsPagerModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [justStampedIndex, setJustStampedIndex] = useState<number | null>(null);
@@ -55,6 +59,18 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
 
   const t = getT(lang);
   const isAr = lang === 'ar';
+
+  const orders = storage.getActiveOrders();
+  const activeOrder: ActiveOrder = orders.find(o => 
+    (o.cardId === card.id || o.customerPhone === card.customerPhone) && (o.status === 'preparing' || o.status === 'ready')
+  ) || orders.find(o => o.status === 'preparing' || o.status === 'ready') || {
+    id: 'ord-demo-47',
+    orderNumber: '47',
+    customerPhone: card.customerPhone,
+    cardId: card.id,
+    status: 'preparing',
+    createdAt: new Date().toISOString(),
+  };
 
   const total = merchant.totalStamps;
   const current = card.currentStamps;
@@ -271,6 +287,52 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         </div>
       </div>
 
+      {/* Tannah Digital Pager Live Notification Banner - when active */}
+      {merchant.features?.enableDigitalPager && activeOrder && (
+        activeOrder.status === 'ready' ? (
+          <button
+            type="button"
+            onClick={() => setIsPagerModalOpen(true)}
+            className="w-full mb-3 p-3 rounded-2xl bg-[#FF5500] hover:bg-[#FF6611] text-white flex items-center justify-between shadow-xl shadow-orange-500/25 transition-all animate-bounce-subtle cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white text-[#FF5500] flex items-center justify-center font-black">
+                <BellRing className="w-4 h-4 animate-ping" />
+              </div>
+              <div className="text-left rtl:text-right">
+                <span className="text-xs font-bold block">
+                  {isAr ? `طلبك #${activeOrder.orderNumber} جاهز للاستلام.` : `Your Order #${activeOrder.orderNumber} is Ready.`}
+                </span>
+                <span className="text-[10px] opacity-90">
+                  {isAr ? 'اضغط لفتح البيجر واستلام هديتك' : 'Tap to open buzzer screen & claim'}
+                </span>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-xl bg-white/20 text-xs font-bold">
+              {isAr ? 'افتح' : 'Open'}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsPagerModalOpen(true)}
+            className="w-full mb-3 p-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center justify-between transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span className="text-xs font-semibold">
+                {isAr 
+                  ? `طلبك #${activeOrder.orderNumber} قيد التجهيز ☕ العب املأ الكوب` 
+                  : `Order #${activeOrder.orderNumber} brewing. Play Fill the Cup.`}
+              </span>
+            </div>
+            <span className="text-[10px] text-amber-400 underline font-mono font-medium">
+              {isAr ? 'البيجر واللعبة' : 'Live Pager'}
+            </span>
+          </button>
+        )
+      )}
+
       {/* Birthday Perk Alert Banner */}
       {isBirthdayMonth() && (
         <div className="w-full mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 to-rose-500/15 border border-amber-500/30 flex items-center gap-2.5 animate-subtle-pulse">
@@ -481,6 +543,18 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
           </button>
         )}
 
+        {/* Tannah Digital Pager & Waiting Mini-Game */}
+        {merchant.features?.enableDigitalPager && (
+          <button
+            type="button"
+            onClick={() => setIsPagerModalOpen(true)}
+            className="w-full h-11 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 active:scale-98 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all flex items-center justify-center gap-2"
+          >
+            <BellRing className="w-4 h-4 text-amber-400" />
+            <span>{isAr ? 'بيجر الطلبات ولعبة املأ الكوب' : 'Digital Order Pager & Waiting Game'}</span>
+          </button>
+        )}
+
         {/* Staff Quick Stamp Button */}
         {merchant.features?.enableSecretStaffPin && (
           <button
@@ -588,6 +662,25 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         lang={lang}
         onStampAdded={() => handlePinStampSuccess(1)}
       />
+
+      {/* Tannah Digital Pager & Waiting Mini-Game Modal */}
+      {merchant.features?.enableDigitalPager && (
+        <DigitalPagerModal
+          isOpen={isPagerModalOpen}
+          onClose={() => setIsPagerModalOpen(false)}
+          order={activeOrder}
+          merchant={merchant}
+          card={card}
+          lang={lang}
+          onOrderClaimed={(orderId) => {
+            storage.updateOrderStatus(orderId, 'picked_up');
+            handlePinStampSuccess(1);
+          }}
+          onSimulateReady={(orderId) => {
+            storage.updateOrderStatus(orderId, 'ready');
+          }}
+        />
+      )}
     </div>
   );
 };

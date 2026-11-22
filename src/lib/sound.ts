@@ -5,7 +5,7 @@ class SoundEngine {
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
-    if (!this.ctx) {
+    if (Boolean(this.ctx) === false) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
@@ -17,10 +17,10 @@ class SoundEngine {
     return this.ctx;
   }
 
-  // Realistic heavy rubber-stamp thud & ink press sound
+  // Realistic heavy rubber-stamp thud and ink press sound
   playStampSound() {
     const ctx = this.getContext();
-    if (!ctx) return;
+    if (ctx === null) return;
 
     try {
       const now = ctx.currentTime;
@@ -69,7 +69,7 @@ class SoundEngine {
       whiteNoise.stop(now + 0.06);
 
       // Trigger mobile haptic vibration if supported
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (typeof navigator === 'object' && navigator.vibrate) {
         navigator.vibrate([35, 20, 60]);
       }
     } catch {
@@ -77,10 +77,10 @@ class SoundEngine {
     }
   }
 
-  // Celebratory reward unlock chime
+  // Celebratory reward celebration chime
   playRewardChime() {
     const ctx = this.getContext();
-    if (!ctx) return;
+    if (ctx === null) return;
 
     try {
       const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
@@ -103,7 +103,7 @@ class SoundEngine {
         osc.stop(start + idx * 0.08 + 0.5);
       });
 
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (typeof navigator === 'object' && navigator.vibrate) {
         navigator.vibrate([100, 50, 100, 50, 200]);
       }
     } catch {
@@ -111,10 +111,10 @@ class SoundEngine {
     }
   }
 
-  // Quick tactile tick for buttons & pins
+  // Quick tactile tick for buttons and pins
   playKeypadTick() {
     const ctx = this.getContext();
-    if (!ctx) return;
+    if (ctx === null) return;
 
     try {
       const now = ctx.currentTime;
@@ -134,8 +134,79 @@ class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.03);
 
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (typeof navigator === 'object' && navigator.vibrate) {
         navigator.vibrate(15);
+      }
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  // Tannah-style digital pager buzzer alarm and vibration
+  playPagerBuzzer() {
+    const ctx = this.getContext();
+    if (ctx === null) return;
+
+    try {
+      const now = ctx.currentTime;
+      const beeps = [0, 0.22, 0.44];
+
+      beeps.forEach(offset => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(440, now + offset + 0.14);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1800;
+
+        gain.gain.setValueAtTime(0.35, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.16);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.16);
+      });
+
+      if (typeof navigator === 'object' && navigator.vibrate) {
+        navigator.vibrate([300, 120, 300, 120, 600]);
+      }
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  // Mini-game coffee bean catch sound
+  playBeanCatch() {
+    const ctx = this.getContext();
+    if (ctx === null) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987.77, now);
+      osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.08);
+
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.09);
+
+      if (typeof navigator === 'object' && navigator.vibrate) {
+        navigator.vibrate(20);
       }
     } catch {
       // Audio autoplay policy fallback

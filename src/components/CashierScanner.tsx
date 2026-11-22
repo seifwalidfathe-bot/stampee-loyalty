@@ -10,10 +10,15 @@ import {
   Sparkles,
   ArrowRight,
   UserCheck,
-  RotateCcw
+  RotateCcw,
+  BellRing,
+  Coffee,
+  Clock,
+  Check
 } from 'lucide-react';
-import { CustomerLoyaltyCard, MerchantConfig } from '../types';
+import { CustomerLoyaltyCard, MerchantConfig, ActiveOrder } from '../types';
 import { soundEngine } from '../lib/sound';
+import { storage } from '../lib/storage';
 import { StampIcon } from './StampIcon';
 
 interface CashierScannerProps {
@@ -36,8 +41,57 @@ export const CashierScanner: React.FC<CashierScannerProps> = ({
   const [searchPhone, setSearchPhone] = useState('');
   const [stampFeedback, setStampFeedback] = useState<string | null>(null);
   const [cameraScanning, setCameraScanning] = useState(false);
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>(storage.getActiveOrders());
+  const [newOrderNum, setNewOrderNum] = useState('');
+
+  const isPagerEnabled = merchant.features?.enableDigitalPager === false ? false : true;
 
   const activeCard = cards.find(c => c.id === activeCardId) || cards[0];
+
+  const handleCreateOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newOrderNum.trim().length === 0) return;
+
+    soundEngine.playKeypadTick();
+    const created = storage.createOrder(
+      newOrderNum.trim(),
+      activeCard?.customerPhone,
+      activeCard?.id
+    );
+    setActiveOrders(storage.getActiveOrders());
+    setNewOrderNum('');
+    setStampFeedback(`Order #${created.orderNumber} added to preparation queue.`);
+    setTimeout(() => setStampFeedback(null), 2500);
+  };
+
+  const handleBuzzOrder = (orderId: string, orderNumber: string) => {
+    soundEngine.playPagerBuzzer();
+    storage.updateOrderStatus(orderId, 'ready');
+    setActiveOrders(storage.getActiveOrders());
+    setStampFeedback(`Customer phone buzzed for Order #${orderNumber}. Screen flashing.`);
+    setTimeout(() => setStampFeedback(null), 3000);
+  };
+
+  const handlePickupOrder = (order: ActiveOrder) => {
+    storage.updateOrderStatus(order.id, 'picked_up');
+    setActiveOrders(storage.getActiveOrders());
+    
+    // Automatically award stamp if customer card is linked
+    const targetCard = cards.find(c => c.id === order.cardId || c.customerPhone === order.customerPhone) || activeCard;
+    if (targetCard) {
+      soundEngine.playRewardChime();
+      const updated = {
+        ...targetCard,
+        currentStamps: Math.min(merchant.totalStamps, targetCard.currentStamps + 1),
+        lastVisited: new Date().toISOString(),
+      };
+      onUpdateCard(updated);
+      setStampFeedback(`Order #${order.orderNumber} picked up. +1 Stamp awarded to ${targetCard.customerName || targetCard.customerPhone}.`);
+    } else {
+      setStampFeedback(`Order #${order.orderNumber} marked as picked up.`);
+    }
+    setTimeout(() => setStampFeedback(null), 3000);
+  };
 
   const handleAddStamp = (count: number) => {
     if (Boolean(activeCard) === false) return;
@@ -288,6 +342,122 @@ export const CashierScanner: React.FC<CashierScannerProps> = ({
 
         </div>
       ) : null}
+
+      {/* Tannah-style Digital Order Pager Section - when enabled */}
+      {isPagerEnabled && (
+        <div className="bg-[#121517] border border-[#22272B] rounded-3xl p-5 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                <BellRing className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white tracking-tight">
+                  Digital Pager & Kitchen Queue
+                </h3>
+                <p className="text-[10px] text-zinc-400">
+                  Replaces physical pagers. Buzz customer phone when ready.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+              {activeOrders.filter(o => o.status === 'preparing' || o.status === 'ready').length} Active Orders
+            </span>
+          </div>
+
+          {/* Add Order Form */}
+          <form onSubmit={handleCreateOrder} className="flex gap-2">
+            <div className="relative flex-1">
+              <Coffee className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={newOrderNum}
+                onChange={e => setNewOrderNum(e.target.value)}
+                placeholder="Order Number (e.g. 47, 48)"
+                className="w-full h-11 pl-9 pr-3 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 h-11 rounded-2xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-xs font-bold text-black transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-amber-600/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Order</span>
+            </button>
+          </form>
+
+          {/* Orders List */}
+          <div className="space-y-2.5">
+            {activeOrders.filter(o => o.status === 'preparing' || o.status === 'ready').length === 0 ? (
+              <p className="text-center py-4 text-xs text-zinc-500">
+                No orders in queue. Type order number above to dispatch pager.
+              </p>
+            ) : (
+              activeOrders
+                .filter(o => o.status === 'preparing' || o.status === 'ready')
+                .map(order => {
+                  const isReady = order.status === 'ready';
+                  return (
+                    <div 
+                      key={order.id}
+                      className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                        isReady 
+                          ? 'bg-amber-500/10 border-amber-500/40 text-amber-200' 
+                          : 'bg-white/[0.02] border-white/5 text-zinc-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-black text-sm ${
+                          isReady ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/30' : 'bg-white/10 text-white'
+                        }`}>
+                          #{order.orderNumber}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">
+                              {order.customerPhone ? order.customerPhone : 'Counter Order'}
+                            </span>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-mono font-semibold ${
+                              isReady ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300 animate-pulse'
+                            }`}>
+                              {isReady ? 'Ready & Buzzed' : 'Brewing'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-3 h-3" />
+                            {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {order.status === 'preparing' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleBuzzOrder(order.id, order.orderNumber)}
+                            className="px-3.5 h-9 rounded-xl bg-[#FF5500] hover:bg-[#FF6611] active:scale-95 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                          >
+                            <BellRing className="w-3.5 h-3.5" />
+                            <span>Ready - Buzz</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handlePickupOrder(order)}
+                            className="px-3.5 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Pickup & Stamp</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Camera Simulator Overlay */}
       {cameraScanning && (
