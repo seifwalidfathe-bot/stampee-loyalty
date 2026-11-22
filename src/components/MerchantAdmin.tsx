@@ -12,15 +12,23 @@ import {
   Sparkles, 
   Ticket, 
   Radio, 
-  Share2, 
   Copy, 
   Check, 
   Send,
   Zap,
-  Globe
+  Sliders,
+  RotateCcw,
+  Store,
+  X,
+  Smartphone,
+  ShieldCheck,
+  Volume2,
+  Cake,
+  Gift
 } from 'lucide-react';
-import { MerchantConfig, CustomerLoyaltyCard, CardThemeId, StampIconType, Language } from '../types';
+import { MerchantConfig, CustomerLoyaltyCard, CardThemeId, StampIconType, Language, FeatureFlags } from '../types';
 import { StampIcon } from './StampIcon';
+import { storage } from '../lib/storage';
 import { getT } from '../lib/translations';
 
 interface MerchantAdminProps {
@@ -40,18 +48,58 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
   onOpenCounterStand,
   onSelectCustomerCard,
 }) => {
-  const [activeTab, setActiveTab] = useState<'designer' | 'crm' | 'growth' | 'security'>('designer');
+  const [activeTab, setActiveTab] = useState<'designer' | 'features' | 'growth' | 'crm' | 'security'>('features');
   const [formData, setFormData] = useState<MerchantConfig>({ ...merchant });
   const [saveToast, setSaveToast] = useState(false);
   const [copiedCouponLink, setCopiedCouponLink] = useState(false);
   const [copiedDmScript, setCopiedDmScript] = useState(false);
 
+  // Clean Slate Modal
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [freshName, setFreshName] = useState('');
+  const [freshCategory, setFreshCategory] = useState<MerchantConfig['category']>('cafe');
+  const [freshStamps, setFreshStamps] = useState(8);
+  const [freshReward, setFreshReward] = useState('Free Signature Drink');
+
   const isAr = lang === 'ar';
   const t = getT(lang);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     onSaveMerchant(formData);
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2500);
+  };
+
+  const handleToggleFeature = (key: keyof FeatureFlags) => {
+    const nextFeatures: FeatureFlags = {
+      ...formData.features,
+      [key]: Boolean(formData.features[key]) === false,
+    };
+    const updated = {
+      ...formData,
+      features: nextFeatures,
+    };
+    setFormData(updated);
+    onSaveMerchant(updated);
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2000);
+  };
+
+  const handleExecuteResetToZero = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (freshName.trim().length === 0) return;
+
+    const fresh = storage.resetToCleanSlate(
+      freshName.trim(),
+      freshCategory,
+      freshStamps,
+      freshReward.trim() || 'Free Reward',
+      formData.features
+    );
+
+    setFormData(fresh);
+    setIsResetModalOpen(false);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
   };
@@ -110,11 +158,20 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
             <h1 className="text-lg font-bold tracking-tight">{merchant.name} — {t.adminConsole}</h1>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            {isAr ? 'إدارة برنامج الولاء، تصميم الكارت، وحملات النمو التلقائية.' : 'Program settings, card design tokens, and customer retention metrics.'}
+            {isAr ? 'إدارة برنامج الولاء، تفعيل وتعطيل المميزات الاختيارية، وتخصيص الكارت.' : 'Program settings, modular feature flags, and customer retention metrics.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsResetModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 text-xs font-semibold text-zinc-300 hover:text-rose-300 transition-all"
+            title="Start from zero with a fresh store"
+          >
+            <RotateCcw className="w-4 h-4 text-rose-400" />
+            <span>{isAr ? 'ابدأ من الصفر (متجر جديد)' : 'Start from Scratch'}</span>
+          </button>
+
           <button
             onClick={onOpenCounterStand}
             className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-200 transition-all"
@@ -157,6 +214,20 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
 
       {/* Navigation Tabs */}
       <div className="flex border-b border-white/10 gap-6 text-xs font-semibold overflow-x-auto pb-1 scrollbar-none">
+        
+        {/* Tab 1: Feature Modules Switcher */}
+        <button
+          onClick={() => setActiveTab('features')}
+          className={`pb-3 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            activeTab === 'features'
+              ? 'border-rose-500 text-rose-400 font-bold'
+              : 'border-transparent text-zinc-400 hover:text-white'
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-emerald-400" />
+          <span>{isAr ? 'المميزات الاختيارية (Feature Toggles)' : 'Modular Features'}</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('designer')}
           className={`pb-3 border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
@@ -205,6 +276,233 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
           <span>{isAr ? 'أمان الكاشير والـ PIN' : 'Cashier PIN & Security'}</span>
         </button>
       </div>
+
+      {/* Tab 0: Modular Feature Toggles - Every feature is optional. */}
+      {activeTab === 'features' && (
+        <div className="bg-[#121517] border border-[#22272B] rounded-3xl p-6 shadow-2xl space-y-6 animate-fade-in">
+          <div>
+            <h3 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-emerald-400" />
+              <span>{isAr ? 'تخصيص وتفعيل مميزات النظام حسب رغبتك' : 'Modular Feature Controls'}</span>
+            </h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              {isAr 
+                ? 'كل ميزة تقدر تشغلها أو تقفلها بزرار واحد؛ والتعديل ينعكس فوراً على الكارت والشاشات.' 
+                : 'Turn specific loyalty modules on or off dynamically. Changes update client passes in real-time.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Feature 1: Welcome Bonus Stamp */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Gift className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'أول ختم مجاني عند التسجيل' : 'Welcome First Stamp Bonus'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'إعطاء العميل أول ختم كهدية ترحيبية فور مسح الكود.' : 'Awards 1 free stamp upon initial registration.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableWelcomeBonus')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableWelcomeBonus ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableWelcomeBonus ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 2: TAPPI Coupon-to-Card Hook */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <Ticket className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'كوبون القهوة الأولى (TAPPI Hook)' : '1st Coffee Coupon-to-Card Hook'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'تحويل تذكرة القهوة المجانية لكارت ولاء دائم عند الصرف.' : 'Voucher that morphs into a loyalty pass upon redemption.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableCouponHook')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableCouponHook ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableCouponHook ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 3: Birthday Perk */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Cake className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'هدية عيد الميلاد السنوية' : 'Annual Birthday Perk'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'تنبيه العميل بهدية عيد ميلاده في أسبوع ميلاده.' : 'Automatic perk indicator during customer birth month.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableBirthdayPerk')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableBirthdayPerk ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableBirthdayPerk ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 4: NFC Counter Tap */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Radio className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'دعم قرص الـ NFC المكتبي' : 'NFC Counter Tap Support'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'إظهار خيار اللمس السريع وشعار الـ NFC على الستاند.' : 'Enables NFC counter puck tap simulation & stand badge.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableNfcTap')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableNfcTap ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableNfcTap ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 5: Apple Wallet & Google Wallet */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'كروت Apple Wallet و Google Wallet' : 'Apple & Google Wallet Integration'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'زر حفظ الكارت في محفظة الهاتف الرسمية.' : 'Allows customers to export pass to native mobile wallets.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableMobileWallet')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableMobileWallet ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableMobileWallet ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 6: Staff Quick PIN */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'ختم الـ PIN السري على هاتف الزبون' : 'Direct Staff Phone PIN Stamping'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'إتاحة الختم السري المباشر بإدخال الكود المكون من 4 أرقام.' : 'Cashier stamps directly on customer screen with secret code.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableSecretStaffPin')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableSecretStaffPin ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableSecretStaffPin ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+            {/* Feature 7: Web Audio Sound & Haptics */}
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-start justify-between gap-3 md:col-span-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Volume2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    {isAr ? 'المؤثرات الصوتية والاهتزاز الحركي' : 'Tactile Sound & Haptic Feedback'}
+                  </h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isAr ? 'صوت خبطة الختم الميكانيكي واهتزاز الموبايل عبر Web Audio API.' : 'Simulated mechanical rubber stamp audio and mobile vibration.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleFeature('enableSoundEffects')}
+                className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${
+                  formData.features.enableSoundEffects ? 'bg-emerald-600' : 'bg-zinc-700'
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  formData.features.enableSoundEffects ? (isAr ? 'left-1' : 'right-1') : (isAr ? 'right-1' : 'left-1')
+                }`} />
+              </button>
+            </div>
+
+          </div>
+
+          <div className="pt-2 flex items-center justify-between text-xs text-zinc-400 border-t border-white/5">
+            <span>{isAr ? 'حفظ فوري تلقائي لكل تعديل' : 'Auto-saves immediately upon toggling'}</span>
+            <button
+              onClick={() => handleSave()}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition-all"
+            >
+              {isAr ? 'تأكيد الحفظ' : 'Confirm Settings'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab 1: Card Designer & Rules */}
       {activeTab === 'designer' && (
@@ -347,11 +645,11 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
         </form>
       )}
 
-      {/* Tab 2: Growth & Instagram Campaigns (TAPPI & INTMAA Hook) */}
+      {/* Tab 2: Growth & Instagram Campaigns */}
       {activeTab === 'growth' && (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Section A: TAPPI Hook - Coupon-to-Card Engine */}
+          {/* Section A: TAPPI Hook */}
           <div className="bg-[#121517] border border-[#22272B] rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -398,7 +696,7 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
             </div>
           </div>
 
-          {/* Section B: INTMAA Hook - Instagram DM Automation Funnel */}
+          {/* Section B: INTMAA Hook */}
           <div className="bg-[#121517] border border-[#22272B] rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -580,6 +878,113 @@ export const MerchantAdmin: React.FC<MerchantAdminProps> = ({
             </button>
           </div>
         </form>
+      )}
+
+      {/* Reset to Clean Slate Modal (Start From Zero Wizard) */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in text-white">
+          <div className="relative w-full max-w-md bg-[#121518] border border-white/10 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setIsResetModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {isAr ? 'إطلاق متجر جديد من الصفر' : 'Launch New Store from Zero'}
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  {isAr ? 'تصفير بيانات الديمو وبدء متجر حقيقي لعميلك.' : 'Cleans demo data and starts fresh for your real client.'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleExecuteResetToZero} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                  {isAr ? 'اسم البيزنس الحقيقي' : 'Business Name'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={freshName}
+                  onChange={e => setFreshName(e.target.value)}
+                  placeholder={isAr ? 'مثال: بن العميد، صالون الباشا، كافيه إيطاليا' : 'e.g. Blue Bottle Coffee'}
+                  className="w-full h-11 px-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                    {isAr ? 'النشاط' : 'Category'}
+                  </label>
+                  <select
+                    value={freshCategory}
+                    onChange={e => setFreshCategory(e.target.value as MerchantConfig['category'])}
+                    className="w-full h-11 px-3 rounded-2xl bg-[#1A1E22] border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
+                  >
+                    <option value="cafe">{isAr ? 'كافيه ومشروبات ☕' : 'Café ☕'}</option>
+                    <option value="salon">{isAr ? 'صالون وسبا ✂️' : 'Salon ✂️'}</option>
+                    <option value="restaurant">{isAr ? 'مطعم وبرجر 🍕' : 'Restaurant 🍕'}</option>
+                    <option value="retail">{isAr ? 'محل تجاري / ريتيل 🎁' : 'Retail 🎁'}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                    {isAr ? 'عدد الأختام' : 'Stamps'}
+                  </label>
+                  <select
+                    value={freshStamps}
+                    onChange={e => setFreshStamps(Number(e.target.value))}
+                    className="w-full h-11 px-3 rounded-2xl bg-[#1A1E22] border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
+                  >
+                    <option value={5}>5 Stamps</option>
+                    <option value={6}>6 Stamps</option>
+                    <option value={8}>8 Stamps</option>
+                    <option value={10}>10 Stamps</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                  {isAr ? 'اسم الهدية عند اكتمال الكارت' : 'Reward Title'}
+                </label>
+                <input
+                  type="text"
+                  value={freshReward}
+                  onChange={e => setFreshReward(e.target.value)}
+                  placeholder={isAr ? 'مثال: مشروب أو حلوى مجانية' : 'e.g. Free Specialty Beverage'}
+                  className="w-full h-11 px-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-semibold"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30"
+                >
+                  {isAr ? 'تأكيد والبدء من الصفر' : 'Reset & Start Fresh'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Save Success Toast */}

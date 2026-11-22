@@ -27,6 +27,10 @@ export const JoinModal: React.FC<JoinModalProps> = ({
   if (isOpen === false) return null;
 
   const isAr = lang === 'ar';
+  const hasWelcomeBonus = typeof merchant.features?.enableWelcomeBonus === 'boolean'
+    ? merchant.features.enableWelcomeBonus 
+    : Boolean(merchant.welcomeStampBonus);
+  const hasBirthdayPerk = merchant.features?.enableBirthdayPerk === false ? false : true;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +39,7 @@ export const JoinModal: React.FC<JoinModalProps> = ({
     setIsSubmitting(true);
     soundEngine.playStampSound();
 
-    const welcomeStamp = merchant.welcomeStampBonus ? 1 : 0;
+    const welcomeStamp = hasWelcomeBonus ? 1 : 0;
 
     const newCard: CustomerLoyaltyCard = {
       id: 'card-' + Math.random().toString(36).substring(2, 9),
@@ -94,13 +98,17 @@ export const JoinModal: React.FC<JoinModalProps> = ({
           </h3>
           <p className="text-xs text-zinc-400 mt-1">
             {isAr 
-              ? 'سجل في 10 ثواني واستلم أول ختم مجاناً في كارتك.' 
-              : 'Register in 10 seconds and claim your first welcome stamp for free.'}
+              ? (hasWelcomeBonus 
+                  ? 'سجل في 10 ثواني واستلم أول ختم مجاناً في كارتك.' 
+                  : 'سجل رقمك في 10 ثواني وابدأ جمع أختامك.')
+              : (hasWelcomeBonus 
+                  ? 'Register in 10 seconds and claim your first welcome stamp for free.' 
+                  : 'Register in 10 seconds to start collecting your stamps.')}
           </p>
         </div>
 
         {/* Welcome Bonus Callout */}
-        {merchant.welcomeStampBonus && (
+        {hasWelcomeBonus && (
           <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2.5">
             <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
             <div className="text-[11px] text-amber-200">
@@ -150,20 +158,22 @@ export const JoinModal: React.FC<JoinModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
-              {isAr ? 'تاريخ الميلاد (لهدية عيد ميلادك)' : 'Birthday (for birthday reward)'}
-            </label>
-            <div className="relative">
-              <Calendar className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="date"
-                value={birthday}
-                onChange={e => setBirthday(e.target.value)}
-                className="w-full h-11 pl-10 pr-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
-              />
+          {hasBirthdayPerk && (
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                {isAr ? 'تاريخ الميلاد (لهدية عيد ميلادك)' : 'Birthday (for birthday reward)'}
+              </label>
+              <div className="relative">
+                <Calendar className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={e => setBirthday(e.target.value)}
+                  className="w-full h-11 pl-10 pr-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-rose-500"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"

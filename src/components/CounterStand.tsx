@@ -91,10 +91,12 @@ export const CounterStand: React.FC<CounterStandProps> = ({ merchant, lang, onBa
         <div className="my-2 p-6 bg-white rounded-3xl shadow-xl border border-[#E5DAC4] flex flex-col items-center max-w-sm w-full">
           
           {/* NFC Disc Icon */}
-          <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-bold">
-            <Radio className="w-4 h-4 text-emerald-600 animate-pulse" />
-            <span>{t.nfcTapStand}</span>
-          </div>
+          {merchant.features?.enableNfcTap && (
+            <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-bold">
+              <Radio className="w-4 h-4 text-emerald-600 animate-pulse" />
+              <span>{t.nfcTapStand}</span>
+            </div>
+          )}
 
           <QRCodeSVG
             value={cardUrl}

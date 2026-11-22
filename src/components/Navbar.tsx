@@ -67,17 +67,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">{isAr ? 'كارت الزبون' : 'Customer Card'}</span>
           </button>
 
-          <button
-            onClick={() => onSelectMode('coupon')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              currentMode === 'coupon'
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-amber-400/90 hover:text-amber-300 hover:bg-white/5'
-            }`}
-          >
-            <Ticket className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{isAr ? 'كوبون القهوة' : 'Free Coupon'}</span>
-          </button>
+          {merchant.features?.enableCouponHook && (
+            <button
+              onClick={() => onSelectMode('coupon')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                currentMode === 'coupon'
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-amber-400/90 hover:text-amber-300 hover:bg-white/5'
+              }`}
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAr ? 'كوبون القهوة' : 'Free Coupon'}</span>
+            </button>
+          )}
 
           <button
             onClick={() => onSelectMode('cashier')}

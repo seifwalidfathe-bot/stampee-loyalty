@@ -9,12 +9,22 @@ export type CardThemeId =
 
 export type Language = 'en' | 'ar';
 
+export interface FeatureFlags {
+  enableWelcomeBonus: boolean;      // 1st stamp free upon registration
+  enableCouponHook: boolean;        // TAPPI "First coffee free" transforming coupon
+  enableBirthdayPerk: boolean;      // Annual birthday beverage/gift perk
+  enableNfcTap: boolean;            // Counter NFC puck tap simulation & stand badge
+  enableMobileWallet: boolean;      // Apple Wallet & Google Wallet pass modal
+  enableSecretStaffPin: boolean;    // Direct cashier 4-digit PIN stamping on phone
+  enableSoundEffects: boolean;      // Web Audio API rubber-stamp thump & chime
+}
+
 export interface PromoCoupon {
   id: string;
   merchantId: string;
-  headline: string; // e.g. "Your 1st Signature Coffee on Us"
-  subheadline: string; // "Claim your free cup and unlock your member card"
-  voucherCode: string; // e.g. "WELCOME-FREE"
+  headline: string;
+  subheadline: string;
+  voucherCode: string;
   discountType: 'free_item' | 'percent_off' | 'first_stamp';
   isClaimed: boolean;
   claimedAt?: string;
@@ -28,12 +38,13 @@ export interface MerchantConfig {
   category: 'cafe' | 'salon' | 'restaurant' | 'retail' | 'bakery' | 'carwash';
   logoEmoji: string;
   coverImage?: string;
-  totalStamps: number; // e.g. 6, 8, 10
+  totalStamps: number; // e.g. 5, 6, 8, 10
   rewardTitle: string; // e.g. "Free Specialty Latte or Signature Dessert"
   rewardTerms: string;
   birthdayReward: string; // e.g. "Free Birthday Beverage"
-  welcomeStampBonus: boolean; // Give 1st stamp free upon registration
+  welcomeStampBonus: boolean;
   activeCoupon?: PromoCoupon;
+  features: FeatureFlags; // Modular feature toggles
   theme: CardThemeId;
   stampIcon: StampIconType;
   cashierPin: string; // 4 digits

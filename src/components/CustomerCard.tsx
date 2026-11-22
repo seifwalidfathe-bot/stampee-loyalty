@@ -61,8 +61,16 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
   const isCompleted = current >= total;
   const progressPercent = Math.min(100, Math.round((current / total) * 100));
 
+  // Sound trigger helper respecting feature flag
+  const playSound = (fn: () => void) => {
+    if (merchant.features?.enableSoundEffects === false ? false : true) {
+      fn();
+    }
+  };
+
   // Check if birthday perk applies
   const isBirthdayMonth = () => {
+    if (merchant.features?.enableBirthdayPerk === false) return false;
     if (Boolean(card.birthday) === false) return false;
     try {
       const birthMonth = new Date(card.birthday || '').getMonth();
@@ -82,13 +90,13 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
         origin: { y: 0.65 },
         colors: ['#C23A22', '#F59E0B', '#10B981', '#3B82F6']
       });
-      soundEngine.playRewardChime();
+      playSound(() => soundEngine.playRewardChime());
     }
   }, [isCompleted, card.unredeemedRewards]);
 
   // Handle staff stamping via PIN
   const handlePinStampSuccess = (stampsToAdd: number) => {
-    soundEngine.playStampSound();
+    playSound(() => soundEngine.playStampSound());
     const newCurrent = card.currentStamps + stampsToAdd;
     let newUnredeemed = card.unredeemedRewards;
     let newCompletedCards = card.totalCompletedCards;
@@ -126,7 +134,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
   // Handle reward redemption
   const handleRedeemReward = () => {
     if (card.unredeemedRewards <= 0) return;
-    soundEngine.playRewardChime();
+    playSound(() => soundEngine.playRewardChime());
 
     onUpdateCard({
       ...card,
@@ -452,31 +460,37 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
       <div className="w-full mt-4 flex flex-col gap-2.5">
         
         {/* Apple & Google Wallet Button */}
-        <button
-          onClick={() => setIsWalletModalOpen(true)}
-          className="w-full h-11 rounded-2xl bg-black/60 hover:bg-black/80 active:scale-98 border border-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
-        >
-          <span className="text-sm"></span>
-          <span>{t.addToWallet}</span>
-        </button>
+        {merchant.features?.enableMobileWallet && (
+          <button
+            onClick={() => setIsWalletModalOpen(true)}
+            className="w-full h-11 rounded-2xl bg-black/60 hover:bg-black/80 active:scale-98 border border-white/15 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
+            <span className="text-sm"></span>
+            <span>{t.addToWallet}</span>
+          </button>
+        )}
 
         {/* NFC Counter Tap Simulation Button (StampForYou style) */}
-        <button
-          onClick={() => setIsNfcModalOpen(true)}
-          className="w-full h-11 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-98 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2"
-        >
-          <Radio className="w-4 h-4 text-emerald-400" />
-          <span>{isAr ? 'تجربة لمس قرص الـ NFC بالكاونتر' : 'Simulate Counter NFC Tap'}</span>
-        </button>
+        {merchant.features?.enableNfcTap && (
+          <button
+            onClick={() => setIsNfcModalOpen(true)}
+            className="w-full h-11 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-98 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2"
+          >
+            <Radio className="w-4 h-4 text-emerald-400" />
+            <span>{isAr ? 'تجربة لمس قرص الـ NFC بالكاونتر' : 'Simulate Counter NFC Tap'}</span>
+          </button>
+        )}
 
         {/* Staff Quick Stamp Button */}
-        <button
-          onClick={() => setIsPinModalOpen(true)}
-          className="w-full h-11 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 text-zinc-300 text-xs font-semibold transition-all flex items-center justify-center gap-2"
-        >
-          <ShieldCheck className="w-4 h-4 text-rose-400" />
-          <span>{t.staffQuickStamp}</span>
-        </button>
+        {merchant.features?.enableSecretStaffPin && (
+          <button
+            onClick={() => setIsPinModalOpen(true)}
+            className="w-full h-11 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 text-zinc-300 text-xs font-semibold transition-all flex items-center justify-center gap-2"
+          >
+            <ShieldCheck className="w-4 h-4 text-rose-400" />
+            <span>{t.staffQuickStamp}</span>
+          </button>
+        )}
 
         {/* Sub Links */}
         <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-zinc-500">
@@ -490,7 +504,7 @@ export const CustomerCard: React.FC<CustomerCardProps> = ({
             <span>{t.openCashierTerminal}</span>
           </button>
           
-          {onOpenCoupon && (
+          {merchant.features?.enableCouponHook && onOpenCoupon && (
             <button
               onClick={onOpenCoupon}
               className="hover:text-amber-300 text-amber-400/90 font-medium transition-colors flex items-center gap-1"

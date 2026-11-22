@@ -1,4 +1,14 @@
-import { MerchantConfig, CustomerLoyaltyCard, StampActivityLog, Language } from '../types';
+import { MerchantConfig, CustomerLoyaltyCard, StampActivityLog, Language, FeatureFlags } from '../types';
+
+export const DEFAULT_FEATURES: FeatureFlags = {
+  enableWelcomeBonus: true,
+  enableCouponHook: true,
+  enableBirthdayPerk: true,
+  enableNfcTap: true,
+  enableMobileWallet: true,
+  enableSecretStaffPin: true,
+  enableSoundEffects: true,
+};
 
 export const DEFAULT_MERCHANT: MerchantConfig = {
   id: 'm-roast-bloom',
@@ -12,6 +22,7 @@ export const DEFAULT_MERCHANT: MerchantConfig = {
   rewardTerms: 'Valid for any 12oz crafted beverage. Non-transferable.',
   birthdayReward: 'Free Signature Birthday Beverage or Bakery Item',
   welcomeStampBonus: true,
+  features: DEFAULT_FEATURES,
   theme: 'craft-paper',
   stampIcon: 'coffee',
   cashierPin: '1234',
@@ -26,7 +37,7 @@ export const INITIAL_CUSTOMER_CARDS: CustomerLoyaltyCard[] = [
     merchantId: 'm-roast-bloom',
     customerPhone: '+20 100 234 5678',
     customerName: 'Kareem Tarek',
-    birthday: '1998-11-15', // Current month! Birthday perk active
+    birthday: '1998-11-15',
     currentStamps: 5,
     totalCompletedCards: 2,
     unredeemedRewards: 0,
@@ -48,7 +59,7 @@ export const INITIAL_CUSTOMER_CARDS: CustomerLoyaltyCard[] = [
     birthday: '1995-04-12',
     currentStamps: 8,
     totalCompletedCards: 1,
-    unredeemedRewards: 1, // Ready to redeem reward!
+    unredeemedRewards: 1,
     stampsHistory: Array.from({ length: 8 }).map((_, i) => ({
       stampIndex: i + 1,
       timestamp: new Date(Date.now() - 86400000 * (16 - i * 2)).toISOString(),
@@ -56,22 +67,6 @@ export const INITIAL_CUSTOMER_CARDS: CustomerLoyaltyCard[] = [
     })),
     lastVisited: new Date(Date.now() - 86400000 * 2).toISOString(),
     createdAt: new Date(Date.now() - 86400000 * 45).toISOString(),
-  },
-  {
-    id: 'card-demo-3',
-    merchantId: 'm-roast-bloom',
-    customerPhone: '+20 102 998 1122',
-    customerName: 'Yasmine Adly',
-    birthday: '2001-08-23',
-    currentStamps: 2,
-    totalCompletedCards: 0,
-    unredeemedRewards: 0,
-    stampsHistory: [
-      { stampIndex: 1, timestamp: new Date(Date.now() - 86400000 * 25).toISOString(), cashierName: 'Sara (Branch 1)' },
-      { stampIndex: 2, timestamp: new Date(Date.now() - 86400000 * 22).toISOString(), cashierName: 'Sara (Branch 1)' },
-    ],
-    lastVisited: new Date(Date.now() - 86400000 * 22).toISOString(), // At risk of churn (> 20 days)
-    createdAt: new Date(Date.now() - 86400000 * 25).toISOString(),
   }
 ];
 
@@ -84,36 +79,32 @@ export const INITIAL_LOGS: StampActivityLog[] = [
     stampsCount: 1,
     timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
     cashierName: 'Omar',
-  },
-  {
-    id: 'log-2',
-    cardId: 'card-demo-2',
-    customerPhone: '+20 111 876 5432',
-    type: 'reward_unlocked',
-    stampsCount: 8,
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-    cashierName: 'Omar',
   }
 ];
 
 const KEYS = {
-  MERCHANT: 'stampee_merchant_v2',
-  CARDS: 'stampee_cards_v2',
-  LOGS: 'stampee_logs_v2',
-  ACTIVE_CARD_ID: 'stampee_active_card_v2',
-  LANG: 'stampee_lang_v2',
+  MERCHANT: 'stampee_merchant_v3',
+  CARDS: 'stampee_cards_v3',
+  LOGS: 'stampee_logs_v3',
+  ACTIVE_CARD_ID: 'stampee_active_card_v3',
+  LANG: 'stampee_lang_v3',
 };
 
 export const storage = {
   getMerchant(): MerchantConfig {
     if (typeof window === 'undefined') return DEFAULT_MERCHANT;
     const raw = localStorage.getItem(KEYS.MERCHANT);
-    if (!raw) {
+    if (raw === null || raw === '') {
       localStorage.setItem(KEYS.MERCHANT, JSON.stringify(DEFAULT_MERCHANT));
       return DEFAULT_MERCHANT;
     }
     try {
-      return { ...DEFAULT_MERCHANT, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_MERCHANT,
+        ...parsed,
+        features: { ...DEFAULT_FEATURES, ...(parsed.features || {}) }
+      };
     } catch {
       return DEFAULT_MERCHANT;
     }
@@ -128,7 +119,7 @@ export const storage = {
   getCards(): CustomerLoyaltyCard[] {
     if (typeof window === 'undefined') return INITIAL_CUSTOMER_CARDS;
     const raw = localStorage.getItem(KEYS.CARDS);
-    if (!raw) {
+    if (raw === null || raw === '') {
       localStorage.setItem(KEYS.CARDS, JSON.stringify(INITIAL_CUSTOMER_CARDS));
       return INITIAL_CUSTOMER_CARDS;
     }
@@ -148,7 +139,7 @@ export const storage = {
   getLogs(): StampActivityLog[] {
     if (typeof window === 'undefined') return INITIAL_LOGS;
     const raw = localStorage.getItem(KEYS.LOGS);
-    if (!raw) {
+    if (raw === null || raw === '') {
       localStorage.setItem(KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
       return INITIAL_LOGS;
     }
@@ -192,10 +183,71 @@ export const storage = {
     window.dispatchEvent(new Event('stampee_storage_update'));
   },
 
+  // Reset everything to 0 for a real fresh business launch
+  resetToCleanSlate(
+    businessName: string, 
+    category: MerchantConfig['category'], 
+    totalStamps: number,
+    rewardTitle: string,
+    features: FeatureFlags
+  ): MerchantConfig {
+    const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'my-store';
+    
+    const freshMerchant: MerchantConfig = {
+      id: 'm-' + Math.random().toString(36).substring(2, 9),
+      name: businessName,
+      slug: slug,
+      tagline: 'Customer Loyalty Pass',
+      category: category,
+      logoEmoji: category === 'cafe' ? '☕' : category === 'salon' ? '✂️' : category === 'restaurant' ? '🍕' : '🎁',
+      totalStamps: totalStamps,
+      rewardTitle: rewardTitle,
+      rewardTerms: 'Valid with any purchase. Non-transferable.',
+      birthdayReward: 'Free Birthday Gift',
+      welcomeStampBonus: features.enableWelcomeBonus,
+      features: features,
+      theme: 'craft-paper',
+      stampIcon: category === 'cafe' ? 'coffee' : category === 'salon' ? 'scissors' : category === 'restaurant' ? 'pizza' : 'star',
+      cashierPin: '1234',
+      primaryColor: '#8C4A2F',
+      stampInkColor: '#C23A22',
+      createdAt: new Date().toISOString(),
+    };
+
+    // Clean initial customer
+    const firstCard: CustomerLoyaltyCard = {
+      id: 'card-' + Math.random().toString(36).substring(2, 9),
+      merchantId: freshMerchant.id,
+      customerPhone: '+20 100 000 0000',
+      customerName: 'First Test Customer',
+      currentStamps: features.enableWelcomeBonus ? 1 : 0,
+      totalCompletedCards: 0,
+      unredeemedRewards: 0,
+      stampsHistory: features.enableWelcomeBonus ? [{
+        stampIndex: 1,
+        timestamp: new Date().toISOString(),
+        cashierName: 'Welcome Stamp',
+        branch: 'Branch 01',
+      }] : [],
+      lastVisited: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.saveMerchant(freshMerchant);
+    this.saveCards([firstCard]);
+    this.setActiveCardId(firstCard.id);
+    localStorage.setItem(KEYS.LOGS, JSON.stringify([]));
+
+    return freshMerchant;
+  },
+
   findOrCreateCard(phone: string, merchantId: string, name?: string, birthday?: string): CustomerLoyaltyCard {
     const cards = this.getCards();
     const existing = cards.find(c => c.customerPhone === phone && c.merchantId === merchantId);
     if (existing) return existing;
+
+    const merchant = this.getMerchant();
+    const welcomeStamp = merchant.features.enableWelcomeBonus ? 1 : 0;
 
     const newCard: CustomerLoyaltyCard = {
       id: 'card-' + Math.random().toString(36).substring(2, 9),
@@ -203,15 +255,15 @@ export const storage = {
       customerPhone: phone,
       customerName: name,
       birthday: birthday,
-      currentStamps: 1, // Welcome Stamp bonus
+      currentStamps: welcomeStamp,
       totalCompletedCards: 0,
       unredeemedRewards: 0,
-      stampsHistory: [{
+      stampsHistory: welcomeStamp > 0 ? [{
         stampIndex: 1,
         timestamp: new Date().toISOString(),
         cashierName: 'Welcome Gift Stamp',
         branch: 'Auto-Welcome',
-      }],
+      }] : [],
       lastVisited: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
